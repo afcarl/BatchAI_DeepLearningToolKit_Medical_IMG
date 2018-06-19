@@ -12,7 +12,7 @@ from dltk.io.augmentation import extract_random_example_array, flip
 from dltk.io.preprocessing import whitening
 
 
-def read_fn(file_references, mode, params=None):
+def read_fn(file_references, mode, input_img, params=None):
     """A custom python read function for interfacing with nii image files.
 
     Args:
@@ -35,19 +35,24 @@ def read_fn(file_references, mode, params=None):
 
     for f in file_references:
         subject_id = f[0]
+        if subject_id == input_img:
+            print('found ', subject_id, 'from DLTK_IXI_Dataset/Data/demographic_HH.csv') #E.g. IXI567
+        else:
+            continue
 
         #data_path = '../../../data/IXI_HH/2mm'
         data_path = 'DLTK_IXI_Dataset/Data/2mm/'
 
         # Read the image nii with sitk
         t1_fn = os.path.join(data_path, '{}/T1_2mm.nii.gz'.format(subject_id))
+        print("Reading :", t1_fn)
         t1 = sitk.GetArrayFromImage(sitk.ReadImage(str(t1_fn)))
 
         # Normalise volume image
         t1 = whitening(t1)
 
         images = np.expand_dims(t1, axis=-1).astype(np.float32)
-
+        print('Predicting........')
         if mode == tf.estimator.ModeKeys.PREDICT:
             yield {'features': {'x': images}, 'img_id': subject_id}
 
@@ -78,4 +83,4 @@ def read_fn(file_references, mode, params=None):
                    'labels': {'y': y.astype(np.float32)},
                    'img_id': subject_id}
 
-            return
+    return

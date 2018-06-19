@@ -17,7 +17,7 @@ from dltk.io.augmentation import extract_random_example_array
 from reader import read_fn
 
 READER_PARAMS = {'extract_examples': False}
-N_VALIDATION_SUBJECTS = 28
+N_VALIDATION_SUBJECTS = 178 #read the whole csv rows. original is 28  
 
 
 def predict(args):
@@ -31,8 +31,9 @@ def predict(args):
 
 
     # We trained on the first 4 subjects, so we predict on the rest
-    file_names = file_names[-N_VALIDATION_SUBJECTS:]
-
+    file_names = file_names[-N_VALIDATION_SUBJECTS:] #note:file_names[-28:] is the last 28 rows which is startiing from row-0 is IXI566 to row-27 IXI646
+    #OR
+    #file_names = file_names[156:] #note: this is IXI586, male
     # From the model_path, parse the latest saved model and restore a
     # predictor from it
     export_dir = \
@@ -47,9 +48,9 @@ def predict(args):
     accuracy = []
     for output in read_fn(file_references=file_names,
                           mode=tf.estimator.ModeKeys.EVAL,
+                          input_img=args.img,
                           params=READER_PARAMS):
         t0 = time.time()
-
         # Parse the read function output and add a dummy batch dimension as
         # required
         img = output['features']['x']
@@ -62,7 +63,7 @@ def predict(args):
         # to any shape that is compatible with the resolution scales of the
         # model:
 
-        num_crop_predictions = 4
+        num_crop_predictions = 6
         crop_batch = extract_random_example_array(
             image_list=img,
             example_size=[64, 96, 96],
@@ -76,12 +77,22 @@ def predict(args):
         y_ = np.mean(y_, axis=0)
         predicted_class = np.argmax(y_)
 
+        if predicted_class == 0:
+            predicted_class_result='Male'
+        else:
+            predicted_class_result='Female'
+
+        if lbl == 0:
+            lbl_is = 'Male'
+        else:
+            lbl_is = 'Female'
         # Calculate the accuracy for this subject
         accuracy.append(predicted_class == lbl)
 
         # Print outputs
         print('id={}; pred={}; true={}; run time={:0.2f} s; '
-              ''.format(test_id, predicted_class, lbl[0], time.time() - t0))
+              ''.format(test_id, predicted_class_result, lbl_is, time.time() - t0))
+              #''.format(test_id, predicted_class, lbl[0], time.time() - t0))
     print('accuracy={}'.format(np.mean(accuracy)))
 
 
@@ -97,6 +108,8 @@ if __name__ == '__main__':
 
     #parser.add_argument('--csv', default='../../../data/IXI_HH/demographic_HH.csv')
     parser.add_argument('--csv', default='DLTK_IXI_Dataset/Data/demographic_HH.csv')
+
+    parser.add_argument('--img', default='IXI586')
 
     args = parser.parse_args()
 
